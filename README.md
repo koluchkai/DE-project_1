@@ -69,24 +69,18 @@
 Напишите SQL-запросы для создания пяти VIEW (по одному на каждую таблицу) и выполните их. Для проверки предоставьте код создания VIEW.
 
 ```SQL
-create materialized view analysis.paymnets_row_datamart as 
+create view analysis.dm_row_payments as 
 select 
  order_id,
  order_ts,
  user_id, 
  payment
 from production.orders
-where order_id in (
+where status in (
  select
-  order_id
- from production.orderstatuslog
- where status_id = (
-  select
-     id
-  from production.orderstatuses 
-    where 
-     key = 'Closed'
- )
+    id
+ from production.orderstatuses 
+   where key = 'Closed'
 )
 ```
 
@@ -117,14 +111,14 @@ insert into analysis.dm_rfm_segments (
             order_ts,
             round((extract(epoch from order_ts - lag(order_ts) over(partition by user_id order by order_ts)) / 3600)) as last_order_ts_diff,
             order_ts - max(order_ts) over(partition by user_id) as max_order_ts_diff
-        from analysis.paymnets_row_datamart
+        from analysis.dm_row_payments
     ),
     f_and_m as (
         select
             user_id,
             ntile(5) over(order by count(distinct order_id)) as frequency,
             ntile(5) over(order by sum(payment)) as monetary_value
-        from analysis.paymnets_row_datamart
+        from analysis.dm_row_payments
         group by user_id
         order by user_id
     )
